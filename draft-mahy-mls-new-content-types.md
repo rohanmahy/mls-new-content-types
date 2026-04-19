@@ -39,7 +39,7 @@ informative:
 
 --- abstract
 
-This Messaging Layer Security (MLS) extensions adds two new variations of the `application` content type, each with a separate key ratchet.
+This Messaging Layer Security (MLS) extension adds two new variations of the `application` content type, each with a separate key ratchet.
 It also creates an MLS capability to negotiate use of the new types, and an IANA registry to register additional content types.
 
 
@@ -51,14 +51,16 @@ Some messaging protocols (ex: XMPP {{?RFC6120}}) make a distinction between regu
 
 This document defines two new MLS {{!RFC9420}} content types: `status` and `ephemeral`.
 These largely act like the `application` content type, but the new content types each maintain distinct key ratchets in the secret tree.
-Only the most recent `status` message from each sender needs to be decrypted.
-Only `ephemeral` messages received within a small amount of time (ex: 10 seconds) are relevant, and of those only the most recent from each sender.
+Only the most recent `status` message of a particular type from each sender needs to be decrypted.
+Only `ephemeral` messages received within a small amount of time (ex: 30 seconds) are relevant (and of those only the most recent per type from each sender).
 
 This allows an application to fast-forward over generations that contain irrelevant messages.
 
 # Conventions and Definitions
 
 {::boilerplate bcp14-tagged}
+
+This document uses many terms and structures from MLS {{!RFC9420}}, and terms and concepts discussed in the MLS Architecture {{!RFC9750}}, including the term Distribution Service (DS).
 
 # Negotiating Support
 
@@ -171,13 +173,27 @@ struct {
 
 All clients in a group need to agree on the "maximum number of steps that clients will move a secret tree ratchet forward in response to a single message before rejecting it" as described in {{Section 7 of !RFC9750}}.
 If a client is about to exhaust that number of steps for its own `status` or `ephemeral` ratchet, it MUST send a new commit.
+A policy for conveying that number is described as `OperationalParamaters.app_message_policy.max_generations_skipahead` in {{Section 7.1 of ?I-D.ietf-mimi-room-policy}}.
 
-On receipt of a `PrivateMessage` with a supported, non-default content type, the receiver likewise decrypts the message using the relevant ratchet.
+On receipt of a `PrivateMessage` with a supported, non-default content type, the receiver first determines if it is outdated.
+If the content is an `ephemeral` content type older than its handling threshold, (ex: older than several minutes), the recipient can drop the message.
+If the content is a `status` content type, and the client has a more recent `status` message of the same type from the same sender, the client can drop the message.
+If the message is not outdated, the client decrypts the message using the relevant ratchet.
+
+
+# DS Behavior
+
+A DS MAY discard messages with an `ephemeral` content type which are considered "old" by the application (ex: several minutes).
+A DS which knows the identity of the sender of a message and the type of status message, MAY discard `status` messages when there is a newer `status` message of the same type from the same sender. (For example, the type of status could be administratively limited to a single type, presented out-of-band, or in the Additional Authenticated Data of the message.)
 
 
 # Security Considerations
 
-TODO Security
+Use of one of the two content types defined here might allow the MLS DS (an on-path potential adversary) to infer more about the state of the sending client, by separating regular message, status message, and ephemeral message classes. However, the additional advantage is unlikely to reveal information not already available during timing and traffic analysis.
+
+Adding new content types potentially increases the amount of keying material that needs to be kept per member, however this mechanism allows for clients to aggressively throw away old generations without decrypting irrelevant messages. Clients MUST verify the authenticity of messages sent with these content types before deleting older generations.
+
+If the volume of messages using these content types regularly exceeds the number of ratchet steps (in instant messaging applications, typically around 10,000 steps), this extension could cause an increase in the number of Commit messages sent.
 
 
 # IANA Considerations
