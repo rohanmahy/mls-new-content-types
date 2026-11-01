@@ -210,7 +210,7 @@ RFC EDITOR: Please replace XXXX throughout with the RFC number assigned to this 
 
 The `supported_content_types` MLS Extension Type is used inside LeafNode objects. It contains a list of non-default ContentTypes supported by the client node.
 
-Value: 0x0009 (suggested)
+Value: 0x000F (suggested)
 
 Name: supported_content_types
 
@@ -224,7 +224,7 @@ Reference: RFC XXXX
 
 The `required_content_types` MLS Extension Type is used inside GroupContext objects. It contains a list of non-default ContentTypes that are mandatory for all MLS members of the group to support.
 
-Value: 0x000a (suggested)
+Value: 0x0010 (suggested)
 
 Name: required_content_types
 
